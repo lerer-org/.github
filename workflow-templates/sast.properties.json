@@ -3,7 +3,7 @@
     "description": "Organization Static scan workflow template.",
     "iconName": "checked-icon",
     "categories": [
-        "TypeScript"
+        "TypeScript","Veracode"
     ],
     "filePatterns": [
         "package.json$",
