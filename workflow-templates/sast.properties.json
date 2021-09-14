@@ -1,0 +1,14 @@
+{
+    "name": "Generic SAST",
+    "description": "Organization Static scan workflow template.",
+    "iconName": "checked-icon",
+    "categories": [
+        "TypeScript"
+    ],
+    "filePatterns": [
+        "package.json$",
+        "^Dockerfile",
+        ".*\\.md$",
+        "veracode-conf.properties"
+    ]
+}
