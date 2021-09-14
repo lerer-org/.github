@@ -1,0 +1,14 @@
+{
+    "name": "Organization Workflow",
+    "description": "Organization CI workflow template.",
+    "iconName": "example-icon",
+    "categories": [
+        "TypeScript"
+    ],
+    "filePatterns": [
+        "package.json$",
+        "^Dockerfile",
+        ".*\\.md$",
+        "veracode-conf.properties"
+    ]
+}
