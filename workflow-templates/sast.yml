@@ -1,0 +1,140 @@
+name: Veracode SAST Scan
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master, release/* ]
+  pull_request:
+    branches: [ master, develop, main, release/* ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  DOTNET_BUILD_DIR_NAME: DOTNET_BUILD_DIR_NAME_TEMPLATE
+  DOTNET_SLN_NAME: DOTNET_SLN_NAME_TEMPLATE
+  POLICY_NAME: POLICY_NAME_TEMPLATE
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  generate-build-version:
+    runs-on: [ self-hosted, generic ]
+    outputs:
+      version-number: ${{ steps.set-version.outputs.version-number }}
+    steps:
+      # see Generate Build Number (PowerShell) step for current format - this is just a stub
+      # see https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idoutputs for explanation of how outputs work.
+      - id: set-version
+        name: set-version
+        run: echo "::set-output name=version-number::0.0.0.$GITHUB_RUN_NUMBER"
+  generate-sandbox-name:
+    runs-on: [ self-hosted, generic ]
+    outputs:
+      sandbox-name: ${{ steps.set-sandbox-name.outputs.sandbox-name }}
+    steps:
+      # Creates the sandbox(logical release descriptive status of current branch)
+      - id: set-sandbox-name
+        name: set-sandbox-name
+        run: |
+          echo ${{ github.head_ref }}
+          branchName="${{ github.head_ref }}"
+          if [[ -z "$branchName" ]]; then
+            branchName="${{ github.ref }}"
+          fi
+          
+          if [[ $branchName == *"master"* ]]; then
+          echo "::set-output name=sandbox-name::Master"
+          elif [[ $branchName == *"main"* ]]; then
+          echo "::set-output name=sandbox-name::Main"
+          elif [[ $branchName == *"elease/"* ]]; then
+          echo "::set-output name=sandbox-name::$branchName"
+          else
+          echo "::set-output name=sandbox-name::Development"
+          fi        
+          
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: [ self-hosted, generic ]
+    strategy:
+      matrix:
+        dotnet-version: ['3.1.409']
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    needs: [ generate-build-version, generate-sandbox-name ]
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      # Required packages are located on internal networks.
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v1.7.2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Install dependencies
+        working-directory: ./src/dotnet/
+        run: |
+          dotnet nuget locals all --clear
+          dotnet clean -p:Configuration=Release
+          dotnet restore $DOTNET_SLN_NAME -p:VersionNumber=${{needs.generate-build-version.outputs.version-number}} -p:Configuration=Release --configfile NuGet.config
+      - name: build project
+        working-directory: ./src/dotnet/
+        run: |
+          dotnet publish $DOTNET_SLN_NAME -p:VersionNumber=${{needs.generate-build-version.outputs.version-number}} -p:Configuration=Release --no-restore
+      - name: Zip Files
+        uses: vimtor/action-zip@v1
+        with:
+          files: ./src/dotnet/$DOTNET_BUILD_DIR_NAME/bin/Release/netcoreapp3.1/publish/
+          dest: result.zip
+      - name: Veracode Upload And Scan
+        # You may pin to the exact commit or the version.
+        # uses: veracode/veracode-uploadandscan-action@c5e63c8383debb26a0d48250eab75d94327635ba
+        uses: veracode/veracode-uploadandscan-action@0.2.1
+        with:
+          # appname
+          appname: ${{ github.repository }}
+          # createprofile
+          createprofile: true
+          # filepath
+          filepath: result.zip #Path to dlls
+          # version
+          version: ${{ github.run_id }}
+          # vid
+          vid: ${{ secrets.VERACODE_ID }}
+          # vkey
+          vkey: ${{ secrets.VERACODE_KEY }}
+          # true or flase
+          createsandbox: true
+          # name of the sandbox
+          sandboxname: "${{needs.generate-sandbox-name.outputs.sandbox-name}}"
+          # wait X minutes for the scan to complete
+          scantimeout: 0
+          # business criticality - policy selection
+          criticality: "High"
+      - name: create dir prior
+        run: |
+          mkdir dls
+      - name: Download pipeline code
+        working-directory: ./dls/
+        run: |
+          curl https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip -o veracode.zip
+          unzip veracode.zip
+      - name: Run Pipeline Scanner
+        continue-on-error: true
+        run: java -Dpipeline.debug=true -jar ./dls/pipeline-scan.jar --veracode_api_id "${{secrets.VERACODE_ID}}" --veracode_api_key "${{secrets.VERACODE_KEY}}" --file "result.zip" --policy_file "sec/$POLICY_NAME" -jo true -so true
+      - id: get-comment-body
+        if: ${{ github.head_ref != '' }}
+        run: |
+          body=$(cat results.txt)
+          body="${body//$'====================\n--------------------------'/'====================<details>'}"
+          body="${body//$'--------------------------\nF'/'</details><details><summary>F'}"
+          body="${body//$'.\n--------------------------'/'.</summary>'}"                             
+          body="${body//$'==========================\nFA'/'</details>==========================<br>FA'}"
+          body="${body//$'\n'/'<br>'}"
+          echo ::set-output name=body::$body
+      - name: Add comment to PR
+        if: ${{ github.head_ref != '' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ steps.get-comment-body.outputs.body }}
+          reactions: rocket
