@@ -1,7 +1,7 @@
 {
     "name": "Organization Workflow",
     "description": "Organization CI workflow template.",
-    "iconName": "example-icon",
+    "iconName": "info-icon-256",
     "categories": [
         "TypeScript"
     ],
