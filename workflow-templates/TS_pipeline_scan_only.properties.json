@@ -1,0 +1,11 @@
+{
+    "name": "TypeScript Scan with Veracode Pipeline",
+    "description": "Package the src directory and scan with Veracode Pipeline Scan",
+    "iconName": "checked-icon",
+    "categories": [
+        "Veracode","TypeScript"
+    ],
+    "filePatterns": [
+        "package.json"
+    ]
+}
