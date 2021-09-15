@@ -1,0 +1,64 @@
+name: Deploy Veracode Pipeline Scanner
+on:
+  workflow_dispatch:
+    inputs:
+      repoName:
+        description: 'repo to target'
+        required: true
+        default: 'YOUR-ORG-HERE/REPO-NAME'
+
+jobs:
+  download_policies_global:
+    runs-on: [ self-hosted, generic ]
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      # https://github.com/actions/checkout
+      - uses: actions/checkout@v2
+        with:
+          ref: master
+          repository: ${{ github.event.inputs.repoName }}
+          token: ${{ secrets.VERACODE_BOT_SECRET }}
+      - name: create dir prior
+        run: |
+          mkdir dls
+          mkdir pollies
+      - name: Download pipeline code
+        working-directory: ./dls/
+        run: |
+          curl https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip -o veracode.zip
+          unzip veracode.zip
+      - name: Download Policy High Risk
+        continue-on-error: true
+        run: java -Dpipeline.debug=true -jar ./dls/pipeline-scan.jar --veracode_api_id "${{secrets.VERACODE_ID}}" --veracode_api_key "${{secrets.VERACODE_KEY}}" --request_policy "High Risk Projects"
+      - name: Download Policy Highly Sensitive
+        continue-on-error: true
+        run: java -Dpipeline.debug=true -jar ./dls/pipeline-scan.jar --veracode_api_id "${{secrets.VERACODE_ID}}" --veracode_api_key "${{secrets.VERACODE_KEY}}" --request_policy "Highly Sensitive API Projects"
+      - name: Download Policy Medium Risk
+        continue-on-error: true
+        run: java -Dpipeline.debug=true -jar ./dls/pipeline-scan.jar --veracode_api_id "${{secrets.VERACODE_ID}}" --veracode_api_key "${{secrets.VERACODE_KEY}}" --request_policy "Medium Risk Projects"
+      - name: Download Policy Low Risk
+        continue-on-error: true
+        run: java -Dpipeline.debug=true -jar ./dls/pipeline-scan.jar --veracode_api_id "${{secrets.VERACODE_ID}}" --veracode_api_key "${{secrets.VERACODE_KEY}}" --request_policy "Low Risk Projects"
+      - name: clean-ups
+        run: |
+          echo "Remove veracode files"
+          rm -rf dls/*
+          mkdir -p sec
+          mv -f High_Risk_Projects.json sec/High.json
+          mv -f Highly_Sensitive_API_Projects.json sec/HighlySensitive.json
+          mv -f Medium_Risk_Projects.json sec/Medium.json
+          mv -f Low_Risk_Projects.json sec/Low.json
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          base: master
+          branch: policy-add-global
+          repo: ${{ github.event.inputs.repoName }}
+          title: Update Security policy - global
+          commit-message: Add latest security policies for repo
+          token: ${{ secrets.VERACODE_BOT_SECRET }}
+          body: |
+            This commit contains the latest security policies to be used by the inline pipe scanner.
+            This file might override files that already exist as there is no native way to sort the order.
+            
+            This PR should be safe to be merged directly to master.
