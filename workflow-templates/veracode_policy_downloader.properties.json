@@ -1,6 +1,6 @@
 {
     "name": "Veracode Policy Downloader",
-    "description": "Organization Static scan workflow template.",
+    "description": "Downloading into a Pull Request the organization Policies - to be used by the Pipeline Scan",
     "iconName": "checked-icon",
     "categories": [
         "Veracode","JSON"
