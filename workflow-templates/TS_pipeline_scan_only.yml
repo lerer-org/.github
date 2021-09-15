@@ -1,0 +1,70 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Security CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:  
+    paths: 
+      - 'src/**'
+      - '!src/test/**'
+  pull_request:
+    branches: [ master ]
+    paths: 
+      - 'src/**'
+      - '!src/test/**'
+  schedule:
+    - cron: "0 5 * * SUN"
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  Security:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      # Runs a single command using the runners shell
+      - name: package for scan
+        run: zip -r forscan.zip src package-lock.json
+      - name: Download the Pipeline Scanner
+        uses: wei/curl@master
+        with:
+          args: -O https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+      - name: Echo Branch name
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch 
+      - name: Print Branch name
+        run: echo "Running on branch ${{ steps.extract_branch.outputs.branch }}"
+      - name: Unzip the Pipeline Scanner
+        run: unzip pipeline-scan-LATEST.zip -d pipeline
+      - name: Run Pipeline Scanner
+        id: pipeline-scan
+        continue-on-error: true
+        run: java -jar ./pipeline/pipeline-scan.jar --veracode_api_id "${{secrets.VERACODE_API_ID}}" --veracode_api_key "${{secrets.VERACODE_API_KEY}}" --file "./forscan.zip" -so true
+      - name: Comment result
+        id: get-comment-body
+        if: ${{ always() }}
+        run: 
+          body=$(cat results.txt)
+          body="${body//$'====================\n--------------------------'/'====================<details>'}"
+          body="${body//$'--------------------------\nF'/'</details><details><summary>F'}"
+          body="${body//$'.\n--------------------------'/'.</summary>'}"                             
+          body="${body//$'==========================\nFA'/'</details>==========================<br>FA'}"
+          body="${body//$'\n'/'<br>'}"
+          echo ::set-output name=body::$body
+      - name: Add comment to PR
+        if: ${{ github.head_ref != '' && github.event_name == 'pull_request'}}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ steps.get-comment-body.outputs.body }}
+          reactions: rocket
