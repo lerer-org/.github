@@ -1,0 +1,11 @@
+{
+    "name": "Veracode Policy Downloader",
+    "description": "Organization Static scan workflow template.",
+    "iconName": "checked-icon",
+    "categories": [
+        "Veracode","JSON"
+    ],
+    "filePatterns": [
+        "veracode-conf.properties"
+    ]
+}
