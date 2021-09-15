@@ -1,0 +1,11 @@
+{
+    "name": "TypeScript dependency Scan with Veracode SCA",
+    "description": "Veracode scan for TS dependencies on every change in dependencies and every PR",
+    "iconName": "checked-icon",
+    "categories": [
+        "Veracode","TypeScript"
+    ],
+    "filePatterns": [
+        "package-lock.json"
+    ]
+}
