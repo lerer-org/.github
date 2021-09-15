@@ -1,10 +1,13 @@
-# This workflow will initiate a Veracode SCA Scan. Requires the following secrets:
+# This workflow will initiate a Veracode SCA Scan. 
+# See: https://help.veracode.com/r/t_configure_pr_github
+
+# Requires the following secrets:
 # SRCCLR_API_TOKEN - generated when creating a new integration under the Agents tab
 # SCM_GITHUB - https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token
 # USER_EMAIL - email address, used in pull requests
 # USER_NAME - username, used in pull requests
 
-name: Veracode SCA Scan
+name: Veracode SCA Scan with Pull Request
 
 # original flow:  https://github.com/tjarrettveracode/.github/blob/main/workflow-templates/sca.yml
 
@@ -32,7 +35,7 @@ jobs:
         # SCA agent activation token
         SRCCLR_API_TOKEN: ${{ secrets.SRCCLR_API_TOKEN }}
         SRCCLR_SCM_TYPE: GITHUB
-        # see: https://help.veracode.com/r/t_configure_pr_github
+        # See: https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token
         SRCCLR_SCM_TOKEN: ${{ secrets.SCM_GITHUB }} 
         # Generate a pull request when libraries contain calls to vulnerable methods
         SRCCLR_PR_ON: methods
