@@ -1,9 +1,9 @@
 {
     "name": "Generic SAST",
-    "description": "Organization Static scan workflow template.",
+    "description": "Organization .NET Build and Static scan workflow template - using both Sandbox and Pipeline Scan",
     "iconName": "checked-icon",
     "categories": [
-        "TypeScript","Veracode"
+        "C#","Processing"
     ],
     "filePatterns": [
         "package.json$",
