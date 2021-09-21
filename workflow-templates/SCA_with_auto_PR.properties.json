@@ -1,5 +1,5 @@
 {
-    "name": "SCA Agent Scan",
+    "name": "SCA Agent Scan for Auto PR",
     "description": "SCA Agent Scan workflow template with Pull Request created for libraries with vulnerable methods which are not breaking build on version update",
     "iconName": "veracode",
     "categories": [
